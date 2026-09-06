@@ -1,0 +1,35 @@
+from typing import List
+
+from pydantic import model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "Library Management System"
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
+    SECRET_KEY: str = "dev-secret-key-change-me"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    DATABASE_URL: str = "sqlite:///./library.db"
+    CORS_ORIGINS: str = "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000"
+
+    model_config = SettingsConfigDict(env_file=".env")
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def validate_environment(self):
+        env_name = (self.ENVIRONMENT or "").lower()
+        secret = self.SECRET_KEY or ""
+        if env_name == "production":
+            if "dev-secret-key-change-me" in secret.lower() or "change-me" in secret.lower() or secret == "":
+                raise ValueError("SECRET_KEY must be set to a secure value in production.")
+            if self.DATABASE_URL.startswith("sqlite"):
+                raise ValueError("Production environment must use a real database URL, not SQLite.")
+        return self
+
+
+settings = Settings()
