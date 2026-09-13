@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from hmac import compare_digest
 from typing import Optional
 from fastapi import HTTPException, status
-from passlib.context import CryptContext
+import bcrypt
 import jwt
 
 from app.config import settings
@@ -10,19 +10,17 @@ from app.models import User, RoleEnum
 from app.schemas import UserRegister
 from app.repositories.user_repository import UserRepository
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 class AuthService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
 
     def hash_password(self, password: str) -> str:
-        # Truncate string to 72 characters to avoid bcrypt length limits
-        return pwd_context.hash(password[:72])
+        password_bytes = password.encode("utf-8")[:72]
+        return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode("utf-8")
 
     def verify_password(self, plain: str, hashed: str) -> bool:
-        # Truncate string to 72 characters to avoid bcrypt length limits
-        return pwd_context.verify(plain[:72], hashed)
+        password_bytes = plain.encode("utf-8")[:72]
+        return bcrypt.checkpw(password_bytes, hashed.encode("utf-8"))
 
     def create_access_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         to_encode = data.copy()
