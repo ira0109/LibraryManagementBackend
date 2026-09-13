@@ -8,6 +8,8 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     role: Optional[RoleEnum] = None
+    admin_username: Optional[str] = None
+    admin_password: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: int

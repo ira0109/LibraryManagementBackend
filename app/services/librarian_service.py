@@ -49,6 +49,11 @@ class LibrarianService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only Member and Librarian roles are allowed."
             )
+        if requested_role == RoleEnum.LIBRARIAN:
+            AuthService(self.user_repo).verify_admin_credential(
+                user_data.admin_username,
+                user_data.admin_password,
+            )
 
         if self.user_repo.get_by_email(user_data.email):
             raise HTTPException(

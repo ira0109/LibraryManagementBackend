@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.database import Base, engine
+from app.database import Base, engine, SessionLocal
+from app.models import User, RoleEnum, AccountStatusEnum
+from app.repositories.user_repository import UserRepository
+from app.services.auth_service import AuthService
 from app.controllers import (
     auth_controller,
     book_controller,
@@ -11,6 +14,36 @@ from app.controllers import (
 
 # Auto-generate DB schema tables on startup
 Base.metadata.create_all(bind=engine)
+
+
+def bootstrap_admin() -> None:
+    if not settings.ADMIN_PASSWORD:
+        return
+
+    db = SessionLocal()
+    try:
+        user_repo = UserRepository(db)
+        existing_admin = user_repo.get_by_email(settings.ADMIN_USERNAME)
+        if existing_admin:
+            existing_admin.password_hash = AuthService(user_repo).hash_password(settings.ADMIN_PASSWORD)
+            existing_admin.role = RoleEnum.LIBRARIAN
+            existing_admin.status = AccountStatusEnum.ACTIVE
+            db.commit()
+            return
+
+        admin = User(
+            name="System Administrator",
+            email=settings.ADMIN_USERNAME,
+            password_hash=AuthService(user_repo).hash_password(settings.ADMIN_PASSWORD),
+            role=RoleEnum.LIBRARIAN,
+            status=AccountStatusEnum.ACTIVE,
+        )
+        user_repo.create(admin)
+    finally:
+        db.close()
+
+
+bootstrap_admin()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

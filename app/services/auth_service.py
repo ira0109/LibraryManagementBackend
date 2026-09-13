@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from hmac import compare_digest
 from typing import Optional
 from fastapi import HTTPException, status
 from passlib.context import CryptContext
@@ -37,6 +38,7 @@ class AuthService:
                 status_code=403,
                 detail="Only librarians can register new accounts. Members must use an existing account created by a librarian."
             )
+        self.verify_admin_credential(user_data.admin_username, user_data.admin_password)
 
         if self.user_repo.get_by_email(user_data.email):
             raise HTTPException(status_code=400, detail="Email is already registered")
@@ -48,6 +50,20 @@ class AuthService:
             role=RoleEnum.LIBRARIAN
         )
         return self.user_repo.create(user)
+
+    def verify_admin_credential(self, admin_username: Optional[str], admin_password: Optional[str]) -> None:
+        if (
+            not settings.ADMIN_USERNAME
+            or not settings.ADMIN_PASSWORD
+            or not admin_username
+            or not admin_password
+            or not compare_digest(admin_username, settings.ADMIN_USERNAME)
+            or not compare_digest(admin_password, settings.ADMIN_PASSWORD)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="A valid admin credential is required to create a librarian account."
+            )
 
     def authenticate_user(self, email: str, password: str) -> str:
         user = self.user_repo.get_by_email(email)

@@ -9,9 +9,12 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
     SECRET_KEY: str = "dev-secret-key-change-me"
+    ADMIN_USERNAME: str = "admin@library.com"
+    ADMIN_PASSWORD: str = "adminpassword"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     DATABASE_URL: str = "sqlite:///./library.db"
+    DATABASE_SSL_MODE: str = "PREFERRED"
     CORS_ORIGINS: str = "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000"
 
     model_config = SettingsConfigDict(env_file=".env")
@@ -25,6 +28,10 @@ class Settings(BaseSettings):
         env_name = (self.ENVIRONMENT or "").lower()
         secret = self.SECRET_KEY or ""
         if env_name == "production":
+            if not self.ADMIN_USERNAME:
+                raise ValueError("ADMIN_USERNAME must be configured in production.")
+            if not self.ADMIN_PASSWORD:
+                raise ValueError("ADMIN_PASSWORD must be configured in production.")
             if "dev-secret-key-change-me" in secret.lower() or "change-me" in secret.lower() or secret == "":
                 raise ValueError("SECRET_KEY must be set to a secure value in production.")
             if self.DATABASE_URL.startswith("sqlite"):
