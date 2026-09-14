@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     DATABASE_URL: str = "sqlite:///./library.db"
     DATABASE_SSL_MODE: str = "PREFERRED"
-    CORS_ORIGINS: str = "https://library-management-front-end-gules.vercel.app/*"
+    CORS_ORIGINS: str = "https://library-management-front-end-gules.vercel.app/"
 
     model_config = SettingsConfigDict(env_file=".env")
 
