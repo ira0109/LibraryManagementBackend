@@ -46,10 +46,16 @@ class Book(Base):
     author = Column(String(100), nullable=False, index=True)
     isbn = Column(String(20), unique=True, nullable=False)
     genre = Column(String(50), nullable=False)
+    total_copies = Column(Integer, nullable=False, default=1)
+    available_copies = Column(Integer, nullable=False, default=1)
     status = Column(SQLEnum(BookStatusEnum), default=BookStatusEnum.AVAILABLE, nullable=False)
 
     requests = relationship("Request", back_populates="book")
     transactions = relationship("Transaction", back_populates="book")
+
+    @property
+    def issued_copies(self) -> int:
+        return self.total_copies - self.available_copies
 
 class Request(Base):
     __tablename__ = "requests"

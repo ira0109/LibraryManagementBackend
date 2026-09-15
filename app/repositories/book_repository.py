@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.models import Book
+from app.models import Book, BookStatusEnum, Request, Transaction
 from app.schemas import BookCreate
 
 class BookRepository:
@@ -27,7 +27,10 @@ class BookRepository:
             title=book_data.title,
             author=book_data.author,
             isbn=book_data.isbn,
-            genre=book_data.genre
+            genre=book_data.genre,
+            total_copies=book_data.total_copies,
+            available_copies=book_data.total_copies,
+            status=BookStatusEnum.AVAILABLE,
         )
         self.db.add(db_book)
         self.db.commit()
@@ -40,12 +43,32 @@ class BookRepository:
         book.author = book_data.author
         book.isbn = book_data.isbn
         book.genre = book_data.genre
+        issued_copies = book.total_copies - book.available_copies
+        if book_data.total_copies < issued_copies:
+            raise ValueError(
+                f"Cannot reduce total copies below the {issued_copies} currently issued."
+            )
+        book.total_copies = book_data.total_copies
+        book.available_copies = book_data.total_copies - issued_copies
+        book.status = (
+            BookStatusEnum.AVAILABLE
+            if book.available_copies > 0
+            else BookStatusEnum.ISSUED
+        )
 
         self.db.commit()
         self.db.refresh(book)
         return book
 
     def delete(self, book: Book) -> None:
-        """Delete a book record."""
+        """Delete a book and its non-active request/history records."""
+        self.db.query(Request).filter(Request.book_id == book.id).delete(synchronize_session=False)
+        self.db.query(Transaction).filter(Transaction.book_id == book.id).delete(synchronize_session=False)
         self.db.delete(book)
         self.db.commit()
+
+    def has_history(self, book_id: int) -> bool:
+        return self.db.query(Transaction.id).filter(Transaction.book_id == book_id).first() is not None
+
+    def has_requests(self, book_id: int) -> bool:
+        return self.db.query(Request.id).filter(Request.book_id == book_id).first() is not None

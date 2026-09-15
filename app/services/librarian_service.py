@@ -31,7 +31,10 @@ class LibrarianService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Book with ID {book_id} was not found."
             )
-        return self.book_repo.update(book, book_data)
+        try:
+            return self.book_repo.update(book, book_data)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     def delete_book(self, book_id: int):
         book = self.book_repo.get_by_id(book_id)
@@ -40,6 +43,8 @@ class LibrarianService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Book with ID {book_id} was not found."
             )
+        if book.available_copies != book.total_copies:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove a book with issued copies.")
         self.book_repo.delete(book)
 
     def create_member_account(self, user_data: UserRegister):
@@ -95,3 +100,19 @@ class LibrarianService:
                 detail=f"Book with ID {book_id} not found."
             )
         return self.transaction_repo.get_by_book_id(book_id)
+
+    def delete_member(self, user_id: int, current_user: User):
+        member = self.user_repo.get_by_id(user_id)
+        if not member or member.role == RoleEnum.LIBRARIAN:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member was not found.")
+        if member.id == current_user.id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot remove your own account.")
+        if self.transaction_repo.get_active_loans_by_user(user_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot remove a member with active loans.")
+        self.user_repo.delete(member)
+
+    def get_member_history(self, user_id: int):
+        member = self.user_repo.get_by_id(user_id)
+        if not member:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member was not found.")
+        return self.transaction_repo.get_by_user_id(user_id)

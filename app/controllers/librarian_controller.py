@@ -44,6 +44,14 @@ def delete_book(
 ):
     service.delete_book(book_id)
 
+@router.delete("/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_member(
+    user_id: int,
+    current_user: User = Depends(require_role(RoleEnum.LIBRARIAN)),
+    service: LibrarianService = Depends(get_librarian_service)
+):
+    service.delete_member(user_id, current_user)
+
 @router.post("/members", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_member(
     user_data: UserRegister,
@@ -83,3 +91,11 @@ def get_book_history(
     service: LibrarianService = Depends(get_librarian_service)
 ):
     return service.get_book_history(book_id)
+
+@router.get("/member/{user_id}/history", response_model=List[TransactionResponse])
+def get_member_history(
+    user_id: int,
+    _: User = Depends(require_role(RoleEnum.LIBRARIAN)),
+    service: LibrarianService = Depends(get_librarian_service)
+):
+    return service.get_member_history(user_id)

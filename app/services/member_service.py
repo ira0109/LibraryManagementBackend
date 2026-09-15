@@ -1,5 +1,5 @@
 from fastapi import HTTPException, BackgroundTasks, status
-from app.models import User, Request, RoleEnum, BookStatusEnum, RequestTypeEnum, RequestStatusEnum
+from app.models import User, Request, RoleEnum, RequestTypeEnum, RequestStatusEnum
 from app.schemas import RequestCreate
 from app.repositories.book_repository import BookRepository
 from app.repositories.request_repository import RequestRepository
@@ -27,7 +27,7 @@ class MemberService:
 
         # Step 2: System Validation Check
         if req_data.type == RequestTypeEnum.ISSUE:
-            if book.status != BookStatusEnum.AVAILABLE:
+            if book.available_copies <= 0:
                 background_tasks.add_task(
                     MailService.send_automated_email,
                     current_user.email,

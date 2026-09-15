@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
-from fastapi import BackgroundTasks
+from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
 from app.models import Request, RequestStatusEnum, RequestTypeEnum, BookStatusEnum, Transaction, User, Book
 from app.services.mail_service import MailService
@@ -38,11 +38,18 @@ class RequestRepository:
     def process_request(self, request: Request, action, background_tasks: Optional[BackgroundTasks] = None) -> Request:
         now = datetime.now(timezone.utc)
         if action.approve:
+            if request.type == RequestTypeEnum.ISSUE and request.book.available_copies <= 0:
+                raise HTTPException(status_code=400, detail="No copies of this book are currently available.")
             request.status = RequestStatusEnum.APPROVED
             request.email_log_status = "Approved"
 
             if request.type == RequestTypeEnum.ISSUE:
-                request.book.status = BookStatusEnum.ISSUED
+                request.book.available_copies -= 1
+                request.book.status = (
+                    BookStatusEnum.AVAILABLE
+                    if request.book.available_copies > 0
+                    else BookStatusEnum.ISSUED
+                )
                 existing_tx = self.db.query(Transaction).filter(
                     Transaction.user_id == request.user_id,
                     Transaction.book_id == request.book_id,
@@ -57,6 +64,10 @@ class RequestRepository:
                         )
                     )
             elif request.type == RequestTypeEnum.RETURN:
+                request.book.available_copies = min(
+                    request.book.total_copies,
+                    request.book.available_copies + 1,
+                )
                 request.book.status = BookStatusEnum.AVAILABLE
                 active_tx = self.db.query(Transaction).filter(
                     Transaction.user_id == request.user_id,

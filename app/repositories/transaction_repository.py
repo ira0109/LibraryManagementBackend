@@ -28,6 +28,9 @@ class TransactionRepository:
     def get_by_book_id(self, book_id: int) -> List[Transaction]:
         return self.db.query(Transaction).filter(Transaction.book_id == book_id).all()
 
+    def get_by_user_id(self, user_id: int) -> List[Transaction]:
+        return self.db.query(Transaction).filter(Transaction.user_id == user_id).all()
+
     def get_history_by_book(self, book_id: int) -> List[Transaction]:
         return self.get_by_book_id(book_id)
 

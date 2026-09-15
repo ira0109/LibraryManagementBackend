@@ -1,6 +1,6 @@
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from app.models import User, RoleEnum
+from app.models import User, RoleEnum, Request, Transaction
 
 class UserRepository:
     def __init__(self, db: Session):
@@ -23,3 +23,15 @@ class UserRepository:
         self.db.commit()
         self.db.refresh(user)
         return user
+
+    def has_history(self, user_id: int) -> bool:
+        return self.db.query(Transaction.id).filter(Transaction.user_id == user_id).first() is not None
+
+    def has_requests(self, user_id: int) -> bool:
+        return self.db.query(Request.id).filter(Request.user_id == user_id).first() is not None
+
+    def delete(self, user: User) -> None:
+        self.db.query(Request).filter(Request.user_id == user.id).delete(synchronize_session=False)
+        self.db.query(Transaction).filter(Transaction.user_id == user.id).delete(synchronize_session=False)
+        self.db.delete(user)
+        self.db.commit()

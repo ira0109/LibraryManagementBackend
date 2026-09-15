@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from app.models import RoleEnum, AccountStatusEnum, BookStatusEnum, RequestTypeEnum, RequestStatusEnum
 
 class UserRegister(BaseModel):
@@ -30,9 +30,12 @@ class BookCreate(BaseModel):
     author: str
     isbn: str
     genre: str
+    total_copies: int = Field(default=1, ge=1)
 
 class BookResponse(BookCreate):
     id: int
+    available_copies: int
+    issued_copies: int
     status: BookStatusEnum
 
     class Config:
